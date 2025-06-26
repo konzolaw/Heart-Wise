@@ -6,6 +6,7 @@ import { ChatInterface } from "./ChatInterface";
 import { CommunityFeed } from "./CommunityFeed";
 import { TestimoniesSection } from "./TestimoniesSection";
 import { DailyVerse } from "./DailyVerse";
+import { AdminPanel } from "./AdminPanel";
 
 type Tab = "chat" | "community" | "testimonies" | "profile" | "communitychat" | "admin";
 
@@ -91,25 +92,7 @@ export function Dashboard({ darkMode, setDarkMode }: { darkMode: boolean; setDar
               {activeTab === "communitychat" && <CommunityChatSection />}
               {activeTab === "testimonies" && <TestimoniesSection />}
               {activeTab === "profile" && <ProfileSettings />}
-              {activeTab === "admin" && isAdmin && (
-                <div className="p-6">
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">🔒 Admin Panel</h2>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-blue-500 text-white rounded-lg p-4 text-center">
-                      <h3>👥 Users</h3>
-                      <p className="text-2xl font-bold">24</p>
-                    </div>
-                    <div className="bg-green-500 text-white rounded-lg p-4 text-center">
-                      <h3>💬 Messages</h3>
-                      <p className="text-2xl font-bold">156</p>
-                    </div>
-                    <div className="bg-red-500 text-white rounded-lg p-4 text-center">
-                      <h3>🚨 Alerts</h3>
-                      <p className="text-2xl font-bold">3</p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {activeTab === "admin" && isAdmin && <AdminPanel />}
             </div>
           </div>
         </div>

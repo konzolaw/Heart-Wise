@@ -2,6 +2,15 @@ import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
+// Helper function to check if user is admin
+async function isAdmin(ctx: any) {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) return false;
+  
+  const user = await ctx.db.get(userId);
+  return user?.email === "admin@heartwise.com";
+}
+
 export const getApprovedTestimonies = query({
   args: { category: v.optional(v.string()) },
   handler: async (ctx, args) => {
@@ -74,5 +83,104 @@ export const submitTestimony = mutation({
     });
 
     return testimonyId;
+  },
+});
+
+export const getPendingTestimonies = query({
+  args: {},
+  handler: async (ctx) => {
+    if (!(await isAdmin(ctx))) throw new Error("Unauthorized");
+    
+    const testimonies = await ctx.db
+      .query("testimonies")
+      .withIndex("by_approved", (q) => q.eq("isApproved", false))
+      .order("desc")
+      .collect();
+
+    const testimoniesWithAuthors = await Promise.all(
+      testimonies.map(async (testimony) => {
+        const profile = await ctx.db
+          .query("profiles")
+          .withIndex("by_user", (q) => q.eq("userId", testimony.userId))
+          .unique();
+
+        const user = await ctx.db.get(testimony.userId);
+
+        return {
+          ...testimony,
+          authorName: testimony.isAnonymous ? "Anonymous" : (profile?.displayName || user?.email || "A Believer"),
+        };
+      })
+    );
+
+    return testimoniesWithAuthors;
+  },
+});
+
+export const approveTestimony = mutation({
+  args: { testimonyId: v.id("testimonies") },
+  handler: async (ctx, args) => {
+    if (!(await isAdmin(ctx))) throw new Error("Unauthorized");
+    
+    await ctx.db.patch(args.testimonyId, {
+      isApproved: true,
+    });
+
+    // Mark related admin notification as read
+    const notifications = await ctx.db
+      .query("adminNotifications")
+      .filter((q) => q.eq(q.field("relatedId"), args.testimonyId))
+      .collect();
+
+    for (const notification of notifications) {
+      await ctx.db.patch(notification._id, { isRead: true });
+    }
+
+    return "Testimony approved successfully";
+  },
+});
+
+export const rejectTestimony = mutation({
+  args: { testimonyId: v.id("testimonies") },
+  handler: async (ctx, args) => {
+    if (!(await isAdmin(ctx))) throw new Error("Unauthorized");
+    
+    // Delete the testimony
+    await ctx.db.delete(args.testimonyId);
+
+    // Mark related admin notification as read
+    const notifications = await ctx.db
+      .query("adminNotifications")
+      .filter((q) => q.eq(q.field("relatedId"), args.testimonyId))
+      .collect();
+
+    for (const notification of notifications) {
+      await ctx.db.patch(notification._id, { isRead: true });
+    }
+
+    return "Testimony rejected successfully";
+  },
+});
+
+export const getTestimonyStats = query({
+  args: {},
+  handler: async (ctx) => {
+    if (!(await isAdmin(ctx))) throw new Error("Unauthorized");
+    
+    const totalTestimonies = (await ctx.db.query("testimonies").collect()).length;
+    const pendingTestimonies = (await ctx.db
+      .query("testimonies")
+      .withIndex("by_approved", (q) => q.eq("isApproved", false))
+      .collect()).length;
+    const approvedTestimonies = (await ctx.db
+      .query("testimonies")
+      .withIndex("by_approved", (q) => q.eq("isApproved", true))
+      .collect()).length;
+
+    return {
+      total: totalTestimonies,
+      pending: pendingTestimonies,
+      approved: approvedTestimonies,
+    };
   },
 });

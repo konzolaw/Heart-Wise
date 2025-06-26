@@ -246,3 +246,91 @@ export const seedAdminData = mutation({
     return "Admin data seeded";
   },
 });
+
+export const getAdminStats = query({
+  args: {},
+  handler: async (ctx) => {
+    if (!(await isAdmin(ctx))) throw new Error("Unauthorized");
+    
+    const totalUsers = (await ctx.db.query("users").collect()).length;
+    const totalPosts = (await ctx.db.query("posts").collect()).length;
+    const totalMessages = (await ctx.db.query("messages").collect()).length;
+    const totalConversations = (await ctx.db.query("conversations").collect()).length;
+    const unreadNotifications = (await ctx.db
+      .query("adminNotifications")
+      .withIndex("by_read", (q) => q.eq("isRead", false))
+      .collect()).length;
+
+    return {
+      totalUsers,
+      totalPosts,
+      totalMessages,
+      totalConversations,
+      unreadNotifications,
+    };
+  },
+});
+
+export const markNotificationRead = mutation({
+  args: { notificationId: v.id("adminNotifications") },
+  handler: async (ctx, args) => {
+    if (!(await isAdmin(ctx))) throw new Error("Unauthorized");
+    
+    await ctx.db.patch(args.notificationId, {
+      isRead: true,
+    });
+
+    return "Notification marked as read";
+  },
+});
+
+export const markAllNotificationsRead = mutation({
+  args: {},
+  handler: async (ctx) => {
+    if (!(await isAdmin(ctx))) throw new Error("Unauthorized");
+    
+    const unreadNotifications = await ctx.db
+      .query("adminNotifications")
+      .withIndex("by_read", (q) => q.eq("isRead", false))
+      .collect();
+
+    for (const notification of unreadNotifications) {
+      await ctx.db.patch(notification._id, { isRead: true });
+    }
+
+    return `${unreadNotifications.length} notifications marked as read`;
+  },
+});
+
+export const deletePost = mutation({
+  args: { postId: v.id("posts") },
+  handler: async (ctx, args) => {
+    if (!(await isAdmin(ctx))) throw new Error("Unauthorized");
+    
+    // Delete associated likes and comments first
+    const likes = await ctx.db
+      .query("postLikes")
+      .withIndex("by_post", (q) => q.eq("postId", args.postId))
+      .collect();
+    
+    const comments = await ctx.db
+      .query("comments")
+      .withIndex("by_post", (q) => q.eq("postId", args.postId))
+      .collect();
+
+    // Delete likes
+    for (const like of likes) {
+      await ctx.db.delete(like._id);
+    }
+
+    // Delete comments
+    for (const comment of comments) {
+      await ctx.db.delete(comment._id);
+    }
+
+    // Delete the post
+    await ctx.db.delete(args.postId);
+
+    return "Post deleted successfully";
+  },
+});
