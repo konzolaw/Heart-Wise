@@ -17,5 +17,6 @@ export const loggedInUser = query({
     if (!user) {
       return null;
     }
-    return user;
-  },
+      return user;
+    },
+  });
