@@ -4,7 +4,18 @@ import { Anonymous } from "@convex-dev/auth/providers/Anonymous";
 import { query } from "./_generated/server";
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
-  providers: [Password, Anonymous],
+  providers: [
+    Password({
+      profile(params) {
+        const email = typeof params.email === "string" ? params.email : "";
+        return {
+          email,
+          name: email.split("@")[0], // Use email prefix as default name
+        };
+      },
+    }),
+    Anonymous,
+  ],
 });
 
 export const loggedInUser = query({
@@ -17,6 +28,6 @@ export const loggedInUser = query({
     if (!user) {
       return null;
     }
-      return user;
+    return user;
     },
   });

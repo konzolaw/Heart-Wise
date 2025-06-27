@@ -21,20 +21,65 @@ export function SignInForm() {
           e.preventDefault();
           setSubmitting(true);
           const formData = new FormData(e.target as HTMLFormElement);
+          const email = formData.get("email") as string;
+          const password = formData.get("password") as string;
+          
+          // Add flow to formData
           formData.set("flow", flow);
-          void signIn("password", formData).catch((error) => {
-            let toastTitle = "";
-            if (error.message.includes("Invalid password")) {
-              toastTitle = "Invalid password. Please try again.";
-            } else {
-              toastTitle =
-                flow === "signIn"
-                  ? "Could not sign in, did you mean to sign up?"
-                  : "Could not sign up, did you mean to sign in?";
-            }
-            toast.error(toastTitle);
-            setSubmitting(false);
+          
+          console.log("Attempting authentication:", {
+            flow,
+            email,
+            hasPassword: !!password,
+            formDataEntries: Array.from(formData.entries())
           });
+          
+          void signIn("password", formData)
+            .then(() => {
+              console.log("Authentication successful");
+              toast.success(flow === "signIn" ? "Signed in successfully!" : "Account created successfully!");
+            })
+            .catch((error) => {
+              console.error("Authentication error:", error);
+              let toastTitle = "";
+              
+              // More specific error handling based on actual Convex auth errors
+              const errorMessage = error.message || error.toString();
+              
+              if (errorMessage.includes("Invalid password") || errorMessage.includes("invalid credentials")) {
+                toastTitle = "Invalid email or password. Please try again.";
+              } else if (errorMessage.includes("Account not found") || errorMessage.includes("User not found")) {
+                if (flow === "signIn") {
+                  toastTitle = "Account not found. Please sign up first.";
+                  // Auto-switch to sign up
+                  setTimeout(() => setFlow("signUp"), 2000);
+                } else {
+                  toastTitle = "Could not create account. Please try again.";
+                }
+              } else if (errorMessage.includes("Account already exists") || errorMessage.includes("User already exists")) {
+                if (flow === "signUp") {
+                  toastTitle = "Account already exists. Please sign in instead.";
+                  // Auto-switch to sign in
+                  setTimeout(() => setFlow("signIn"), 2000);
+                } else {
+                  toastTitle = "Account exists. Please use sign in.";
+                }
+              } else if (errorMessage.includes("Missing password")) {
+                toastTitle = "Please enter a password.";
+              } else if (errorMessage.includes("Invalid email")) {
+                toastTitle = "Please enter a valid email address.";
+              } else {
+                // Generic fallback
+                if (flow === "signIn") {
+                  toastTitle = "Could not sign in. Try signing up if you don't have an account.";
+                } else {
+                  toastTitle = "Could not create account. Try signing in if you already have one.";
+                }
+              }
+              
+              toast.error(toastTitle);
+              setSubmitting(false);
+            });
         }}
       >
         <input
