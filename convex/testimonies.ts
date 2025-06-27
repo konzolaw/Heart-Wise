@@ -171,3 +171,99 @@ export const rejectTestimony = mutation({
     return "Testimony rejected and deleted";
   },
 });
+
+// Seed function to populate testimonies (for production setup)
+export const seedTestimonies = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Check if testimonies already exist
+    const existingTestimonies = await ctx.db.query("testimonies").take(1);
+    if (existingTestimonies.length > 0) {
+      return "Testimonies already exist, skipping seed";
+    }
+
+    // Create sample users for testimonies
+    const users = [
+      { email: "sarah.m@example.com" },
+      { email: "michael.k@example.com" },
+      { email: "grace.t@example.com" },
+      { email: "david.r@example.com" },
+      { email: "rachel.l@example.com" },
+    ];
+
+    const userIds = [];
+    for (const user of users) {
+      const userId = await ctx.db.insert("users", user);
+      userIds.push(userId);
+      
+      // Create profiles
+      await ctx.db.insert("profiles", {
+        userId,
+        displayName: user.email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        bio: "A believer sharing God's love",
+        age: 25 + Math.floor(Math.random() * 15),
+        location: "United States",
+        isPrivate: false,
+      });
+    }
+
+    // Sample testimonies
+    const testimonies = [
+      {
+        userId: userIds[0],
+        title: "God Brought Us Together Through Faith",
+        story: "I was praying for a godly partner for years. Through this community and God's guidance, I met my husband. We both prioritized Christ in our relationship from day one, and now we're blessed with a marriage that glorifies God. Thank you for creating this space where believers can connect authentically.",
+        category: "relationship" as const,
+        isAnonymous: false,
+        isApproved: true,
+      },
+      {
+        userId: userIds[1],
+        title: "Healing After Heartbreak",
+        story: "After a painful breakup, I found solace in the daily verses and community support here. God used this season to draw me closer to Him and prepare my heart for His best. The biblical dating principles shared here helped me understand my worth in Christ.",
+        category: "healing" as const,
+        isAnonymous: false,
+        isApproved: true,
+      },
+      {
+        userId: userIds[2],
+        title: "Divine Guidance in Choosing My Spouse",
+        story: "The advice and biblical teachings here helped me discern God's will in my relationship. Instead of rushing, we took time to pray, seek counsel, and build our friendship first. Now we're engaged and planning a Christ-centered wedding!",
+        category: "guidance" as const,
+        isAnonymous: false,
+        isApproved: true,
+      },
+      {
+        userId: userIds[3],
+        title: "Transformed Marriage Through Biblical Principles",
+        story: "Our marriage was struggling, but the biblical advice shared in this community helped us rediscover God's design for marriage. We learned to love sacrificially, communicate with grace, and put Christ at the center. Our relationship is stronger than ever.",
+        category: "marriage" as const,
+        isAnonymous: false,
+        isApproved: true,
+      },
+      {
+        userId: userIds[4],
+        title: "God's Perfect Timing",
+        story: "I was getting impatient waiting for the right person, but the community here encouraged me to trust God's timing. When I stopped forcing things and focused on growing in faith, God brought an amazing godly man into my life. His timing is always perfect!",
+        category: "relationship" as const,
+        isAnonymous: true,
+        isApproved: true,
+      },
+      {
+        userId: userIds[0],
+        title: "Learning to Wait with Hope",
+        story: "Being single in a couples-focused church was hard, but this community reminded me that my identity is in Christ, not my relationship status. I've learned to use this season to serve God and grow spiritually. Whether He calls me to marriage or singleness, I'm content in Him.",
+        category: "guidance" as const,
+        isAnonymous: false,
+        isApproved: true,
+      },
+    ];
+
+    // Insert testimonies
+    for (const testimony of testimonies) {
+      await ctx.db.insert("testimonies", testimony);
+    }
+
+    return "Testimonies seeded successfully!";
+  },
+});
