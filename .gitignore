@@ -18,12 +18,70 @@ dist-ssr
 .idea
 .DS_Store
 *.suo
-
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-# Ignored for the template, you probably want to remove it:
-package-lock.json
+# Environment variables - NEVER commit these!
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.development
+.env.test
+.env.production
+.env        
+.env.example
+
+# Deployment and sensitive configuration files
+DEPLOYMENT.md
+ENV_SETUP.md
+vercel.json
+
+# Backup and temporary files that may contain sensitive data
+*_backup.*
+*_old.*
+*_new.*
+*_fixed.*
+*_copy.*
+seed-data.js
+setup.mjs
+
+# Admin and authentication related files that may contain sensitive info
+**/admin*
+**/*admin*
+**/*auth*
+**/*login*
+
+# API keys and secrets (extra protection)
+**/secrets/
+**/.secrets/
+*api-key*
+*secret*
+*password*
+
+# Build artifacts
+build
+coverage
+*.tgz
+*.zip
+*.tar.gz
+*.rar
+*.7z
+*.gz
+*.bz2
+
+# Ignore temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.orig
+
+# Package lock files (can be regenerated)
+package-lock.json
+
+# IDE and system files
+.cursor/
+.vscode/settings.json`

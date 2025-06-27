@@ -197,3 +197,47 @@ export const saveAIMessage = internalMutation({
     });
   },
 });
+
+export const renameConversation = mutation({
+  args: { 
+    conversationId: v.id("conversations"),
+    newTitle: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    // Verify user owns this conversation
+    const conversation = await ctx.db.get(args.conversationId);
+    if (!conversation || conversation.userId !== userId) {
+      throw new Error("Unauthorized");
+    }
+
+    await ctx.db.patch(args.conversationId, {
+      title: args.newTitle.trim(),
+    });
+
+    return "Conversation renamed successfully";
+  },
+});
+
+export const deleteConversation = mutation({
+  args: { conversationId: v.id("conversations") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    // Verify user owns this conversation
+    const conversation = await ctx.db.get(args.conversationId);
+    if (!conversation || conversation.userId !== userId) {
+      throw new Error("Unauthorized");
+    }
+
+    // Mark conversation as inactive instead of deleting
+    await ctx.db.patch(args.conversationId, {
+      isActive: false,
+    });
+
+    return "Conversation deleted successfully";
+  },
+});

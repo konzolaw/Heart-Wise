@@ -9,6 +9,8 @@ export function ChatInterface() {
   const [selectedConversation, setSelectedConversation] = useState<Id<"conversations"> | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [editingTitle, setEditingTitle] = useState<Id<"conversations"> | null>(null);
+  const [newTitle, setNewTitle] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const conversations = useQuery(api.chat.getUserConversations);
@@ -19,6 +21,8 @@ export function ChatInterface() {
 
   const createConversation = useMutation(api.chat.createConversation);
   const sendMessage = useMutation(api.chat.sendMessage);
+  const renameConversation = useMutation(api.chat.renameConversation);
+  const deleteConversation = useMutation(api.chat.deleteConversation);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -32,6 +36,46 @@ export function ChatInterface() {
       setSelectedConversation(conversationId);
     } catch (error) {
       toast.error("Failed to create conversation");
+    }
+  };
+
+  const handleRenameConversation = async (conversationId: Id<"conversations">, title: string) => {
+    try {
+      await renameConversation({
+        conversationId,
+        newTitle: title,
+      });
+      setEditingTitle(null);
+      toast.success("Conversation renamed");
+    } catch (error) {
+      toast.error("Failed to rename conversation");
+    }
+  };
+
+  const handleDeleteConversation = async (conversationId: Id<"conversations">) => {
+    if (confirm("Are you sure you want to delete this conversation?")) {
+      try {
+        await deleteConversation({ conversationId });
+        if (selectedConversation === conversationId) {
+          setSelectedConversation(null);
+        }
+        toast.success("Conversation deleted");
+      } catch (error) {
+        toast.error("Failed to delete conversation");
+      }
+    }
+  };
+
+  const startEditing = (conversationId: Id<"conversations">, currentTitle: string) => {
+    setEditingTitle(conversationId);
+    setNewTitle(currentTitle);
+  };
+
+  const saveTitle = async (conversationId: Id<"conversations">) => {
+    if (newTitle.trim()) {
+      await handleRenameConversation(conversationId, newTitle.trim());
+    } else {
+      setEditingTitle(null);
     }
   };
 
@@ -72,20 +116,66 @@ export function ChatInterface() {
         
         <div className="space-y-2">
           {conversations?.map((conversation) => (
-            <button
+            <div
               key={conversation._id}
-              onClick={() => setSelectedConversation(conversation._id)}
-              className={`w-full text-left p-3 rounded-lg transition-colors ${
+              className={`rounded-lg transition-colors ${
                 selectedConversation === conversation._id
                   ? "bg-purple-100 dark:bg-purple-900 border-purple-300 dark:border-purple-700"
                   : "hover:bg-gray-100 dark:hover:bg-slate-700"
               }`}
             >
-              <p className="font-medium text-sm truncate text-gray-900 dark:text-white">{conversation.title}</p>
-              <p className="text-xs text-gray-500 dark:text-slate-400">
-                {new Date(conversation._creationTime).toLocaleDateString()}
-              </p>
-            </button>
+              <div className="flex items-center justify-between p-3">
+                <div 
+                  className="flex-1 cursor-pointer"
+                  onClick={() => setSelectedConversation(conversation._id)}
+                >
+                  {editingTitle === conversation._id ? (
+                    <input
+                      type="text"
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      onBlur={() => saveTitle(conversation._id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') void saveTitle(conversation._id);
+                        if (e.key === 'Escape') setEditingTitle(null);
+                      }}
+                      className="w-full text-sm font-medium bg-transparent border-none outline-none text-gray-900 dark:text-white"
+                      autoFocus
+                    />
+                  ) : (
+                    <p className="font-medium text-sm truncate text-gray-900 dark:text-white">
+                      {conversation.title}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500 dark:text-slate-400">
+                    {new Date(conversation._creationTime).toLocaleDateString()}
+                  </p>
+                </div>
+                
+                <div className="flex space-x-1 ml-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startEditing(conversation._id, conversation.title);
+                    }}
+                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded"
+                    title="Rename conversation"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleDeleteConversation(conversation._id);
+                    }}
+                    className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded"
+                    title="Delete conversation"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            </div>
           ))}
           
           {!conversations?.length && (

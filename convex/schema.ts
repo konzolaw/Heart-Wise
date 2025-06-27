@@ -39,13 +39,18 @@ const applicationTables = {
       v.literal("advice"),
       v.literal("testimony"),
       v.literal("question"),
-      v.literal("encouragement")
+      v.literal("encouragement"),
+      v.literal("announcement")
     ),
     isAnonymous: v.boolean(),
+    realAuthorId: v.optional(v.id("users")), // Always track real author for admin
     likes: v.number(),
+    dislikes: v.optional(v.number()),
     image: v.optional(v.id("_storage")),
+    imageUrl: v.optional(v.string()),
   }).index("by_category", ["category"])
-    .index("by_user", ["userId"]),
+    .index("by_user", ["userId"])
+    .index("by_real_author", ["realAuthorId"]),
 
   // Post likes
   postLikes: defineTable({
@@ -84,7 +89,12 @@ const applicationTables = {
     reference: v.string(),
     reflection: v.string(),
     date: v.string(),
-  }).index("by_date", ["date"]),
+    isAIGenerated: v.optional(v.boolean()),
+    topic: v.optional(v.string()),
+    minuteKey: v.optional(v.string()), // For minute-based updates
+    lastUpdated: v.optional(v.number()),
+  }).index("by_date", ["date"])
+    .index("by_minute_key", ["minuteKey"]),
 
   // Community chat rooms
   chatRooms: defineTable({
@@ -123,6 +133,58 @@ const applicationTables = {
     adminContent: v.string(),
     isPublished: v.boolean(),
   }).index("by_conversation", ["conversationId"]),
+
+  // Video calls
+  videoCalls: defineTable({
+    roomId: v.id("chatRooms"),
+    hostUserId: v.id("users"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    meetingUrl: v.string(),
+    scheduledTime: v.optional(v.number()),
+    isActive: v.boolean(),
+    maxParticipants: v.number(),
+    currentParticipants: v.number(),
+  }).index("by_room", ["roomId"])
+    .index("by_host", ["hostUserId"])
+    .index("by_active", ["isActive"]),
+
+  // Video call participants
+  videoCallParticipants: defineTable({
+    callId: v.id("videoCalls"),
+    userId: v.id("users"),
+    joinedAt: v.number(),
+    leftAt: v.optional(v.number()),
+    isActive: v.boolean(),
+  }).index("by_call", ["callId"])
+    .index("by_user", ["userId"]),
+
+  // Password reset tokens
+  passwordResetTokens: defineTable({
+    userId: v.id("users"),
+    token: v.string(),
+    expiresAt: v.number(),
+    isUsed: v.boolean(),
+  }).index("by_user", ["userId"])
+    .index("by_token", ["token"]),
+
+  // User reactions to posts (likes/dislikes)
+  postReactions: defineTable({
+    userId: v.id("users"),
+    postId: v.id("posts"),
+    reaction: v.union(v.literal("like"), v.literal("dislike")),
+  }).index("by_user", ["userId"])
+    .index("by_post", ["postId"])
+    .index("by_user_post", ["userId", "postId"]),
+
+  // Comments on posts
+  postComments: defineTable({
+    postId: v.id("posts"),
+    userId: v.id("users"),
+    content: v.string(),
+    isAnonymous: v.boolean(),
+  }).index("by_post", ["postId"])
+    .index("by_user", ["userId"]),
 };
 
 export default defineSchema({

@@ -8,11 +8,16 @@ import { ProfileSetup } from "./components/ProfileSetup";
 import { useState, useEffect } from "react";
 
 export default function App() {
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(true); // Default to dark mode
 
   useEffect(() => {
     const saved = localStorage.getItem('darkMode');
-    if (saved) setDarkMode(JSON.parse(saved));
+    if (saved) {
+      setDarkMode(JSON.parse(saved));
+    } else {
+      // If no saved preference, default to dark mode
+      setDarkMode(true);
+    }
   }, []);
 
   useEffect(() => {

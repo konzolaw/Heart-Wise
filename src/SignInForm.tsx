@@ -2,11 +2,16 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ForgotPasswordForm } from "./components/PasswordReset";
 
 export function SignInForm() {
   const { signIn } = useAuthActions();
-  const [flow, setFlow] = useState<"signIn" | "signUp">("signIn");
+  const [flow, setFlow] = useState<"signIn" | "signUp" | "forgotPassword">("signIn");
   const [submitting, setSubmitting] = useState(false);
+
+  if (flow === "forgotPassword") {
+    return <ForgotPasswordForm onBack={() => setFlow("signIn")} />;
+  }
 
   return (
     <div className="w-full">
@@ -63,6 +68,18 @@ export function SignInForm() {
             {flow === "signIn" ? "Sign up instead" : "Sign in instead"}
           </button>
         </div>
+        
+        {flow === "signIn" && (
+          <div className="text-center text-sm">
+            <button
+              type="button"
+              className="text-gray-600 dark:text-slate-400 hover:text-primary hover:underline cursor-pointer"
+              onClick={() => setFlow("forgotPassword")}
+            >
+              Forgot your password?
+            </button>
+          </div>
+        )}
       </form>
       <div className="flex items-center justify-center my-3">
         <hr className="my-4 grow border-gray-200" />

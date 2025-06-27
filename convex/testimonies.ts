@@ -2,15 +2,6 @@ import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
-// Helper function to check if user is admin
-async function isAdmin(ctx: any) {
-  const userId = await getAuthUserId(ctx);
-  if (!userId) return false;
-  
-  const user = await ctx.db.get(userId);
-  return user?.email === "admin@heartwise.com";
-}
-
 export const getApprovedTestimonies = query({
   args: { category: v.optional(v.string()) },
   handler: async (ctx, args) => {
@@ -86,19 +77,48 @@ export const submitTestimony = mutation({
   },
 });
 
+// Admin: Get testimony statistics
+export const getTestimonyStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const total = await ctx.db.query("testimonies").collect().then(testimonies => testimonies.length);
+    const approved = await ctx.db
+      .query("testimonies")
+      .withIndex("by_approved", (q) => q.eq("isApproved", true))
+      .collect().then(testimonies => testimonies.length);
+    const pending = await ctx.db
+      .query("testimonies")
+      .withIndex("by_approved", (q) => q.eq("isApproved", false))
+      .collect().then(testimonies => testimonies.length);
+
+    return {
+      total,
+      approved,
+      pending,
+    };
+  },
+});
+
+// Admin: Get pending testimonies
 export const getPendingTestimonies = query({
   args: {},
   handler: async (ctx) => {
-    if (!(await isAdmin(ctx))) throw new Error("Unauthorized");
-    
-    const testimonies = await ctx.db
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const user = await ctx.db.get(userId);
+    if (user?.email !== "admin@heartwise.com") {
+      throw new Error("Admin access required");
+    }
+
+    const pendingTestimonies = await ctx.db
       .query("testimonies")
       .withIndex("by_approved", (q) => q.eq("isApproved", false))
       .order("desc")
       .collect();
 
     const testimoniesWithAuthors = await Promise.all(
-      testimonies.map(async (testimony) => {
+      pendingTestimonies.map(async (testimony) => {
         const profile = await ctx.db
           .query("profiles")
           .withIndex("by_user", (q) => q.eq("userId", testimony.userId))
@@ -109,6 +129,7 @@ export const getPendingTestimonies = query({
         return {
           ...testimony,
           authorName: testimony.isAnonymous ? "Anonymous" : (profile?.displayName || user?.email || "A Believer"),
+          authorEmail: user?.email,
         };
       })
     );
@@ -117,70 +138,36 @@ export const getPendingTestimonies = query({
   },
 });
 
+// Admin: Approve testimony
 export const approveTestimony = mutation({
   args: { testimonyId: v.id("testimonies") },
   handler: async (ctx, args) => {
-    if (!(await isAdmin(ctx))) throw new Error("Unauthorized");
-    
-    await ctx.db.patch(args.testimonyId, {
-      isApproved: true,
-    });
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
 
-    // Mark related admin notification as read
-    const notifications = await ctx.db
-      .query("adminNotifications")
-      .filter((q) => q.eq(q.field("relatedId"), args.testimonyId))
-      .collect();
-
-    for (const notification of notifications) {
-      await ctx.db.patch(notification._id, { isRead: true });
+    const user = await ctx.db.get(userId);
+    if (user?.email !== "admin@heartwise.com") {
+      throw new Error("Admin access required");
     }
 
+    await ctx.db.patch(args.testimonyId, { isApproved: true });
     return "Testimony approved successfully";
   },
 });
 
+// Admin: Reject testimony
 export const rejectTestimony = mutation({
   args: { testimonyId: v.id("testimonies") },
   handler: async (ctx, args) => {
-    if (!(await isAdmin(ctx))) throw new Error("Unauthorized");
-    
-    // Delete the testimony
-    await ctx.db.delete(args.testimonyId);
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
 
-    // Mark related admin notification as read
-    const notifications = await ctx.db
-      .query("adminNotifications")
-      .filter((q) => q.eq(q.field("relatedId"), args.testimonyId))
-      .collect();
-
-    for (const notification of notifications) {
-      await ctx.db.patch(notification._id, { isRead: true });
+    const user = await ctx.db.get(userId);
+    if (user?.email !== "admin@heartwise.com") {
+      throw new Error("Admin access required");
     }
 
-    return "Testimony rejected successfully";
-  },
-});
-
-export const getTestimonyStats = query({
-  args: {},
-  handler: async (ctx) => {
-    if (!(await isAdmin(ctx))) throw new Error("Unauthorized");
-    
-    const totalTestimonies = (await ctx.db.query("testimonies").collect()).length;
-    const pendingTestimonies = (await ctx.db
-      .query("testimonies")
-      .withIndex("by_approved", (q) => q.eq("isApproved", false))
-      .collect()).length;
-    const approvedTestimonies = (await ctx.db
-      .query("testimonies")
-      .withIndex("by_approved", (q) => q.eq("isApproved", true))
-      .collect()).length;
-
-    return {
-      total: totalTestimonies,
-      pending: pendingTestimonies,
-      approved: approvedTestimonies,
-    };
+    await ctx.db.delete(args.testimonyId);
+    return "Testimony rejected and deleted";
   },
 });

@@ -40,4 +40,11 @@ window.addEventListener('message', async (message) => {
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    outDir: "dist",
+    sourcemap: false,
+    minify: "esbuild",
+    target: "esnext",
+  },
+  base: "/",
 }));
