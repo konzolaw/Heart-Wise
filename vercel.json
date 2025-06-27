@@ -17,10 +17,5 @@
     "env": {
       "VITE_CONVEX_URL": "https://aromatic-elk-861.convex.cloud"
     }
-  },
-  "functions": {
-    "app/api/**": {
-      "runtime": "nodejs18.x"
-    }
   }
 }
