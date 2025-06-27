@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "installCommand": "npm install",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "env": {
+    "VITE_CONVEX_URL": "https://aromatic-elk-861.convex.cloud"
+  },
+  "build": {
+    "env": {
+      "VITE_CONVEX_URL": "https://aromatic-elk-861.convex.cloud"
+    }
+  }
+}

@@ -37,7 +37,6 @@ dist-ssr
 # Deployment and sensitive configuration files
 DEPLOYMENT.md
 ENV_SETUP.md
-vercel.json
 
 # Backup and temporary files that may contain sensitive data
 *_backup.*
