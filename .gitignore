@@ -61,6 +61,15 @@ setup.mjs
 *secret*
 *password*
 
+# Cryptographic keys - NEVER commit these!
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+private-key.pem
+public-key.pem
+
 # Build artifacts
 build
 coverage
